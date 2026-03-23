@@ -1,35 +1,47 @@
 package pio.daw;
 
 public class User implements Localizable {
-    private String id;
-    private Integer nEntries = 0;
-    private Boolean inside = false;
 
-    public User(String id){
-        this.id = id;
+    private final String id;
+    private int nEntries;
+    private boolean inside;
+
+    public User(String id) {
+        this.id    = id;
+        this.nEntries = 0;
+        this.inside   = false;
     }
 
-    public String getId(){
-        return this.id;
+    public String getId() {
+        return id;
     }
 
-    public void registerNewEvent(EventType e){
-        if(e == EventType.ENTRY && !this.inside){
-            this.inside = true;
-            this.nEntries++;
+    public void registerNewEvent(EventType e) {
+        switch (e) {
+            case ENTRY -> {
+                if (!inside) {
+                    inside = true;
+                    nEntries++;
+                }
+            }
+            case EXIT -> {
+                if (inside) {
+                    inside = false;
+                }
+            }
         }
-        else if(e == EventType.EXIT && this.inside){
-            this.inside = false;
-        }
     }
 
-    public Integer getNEntries(){
-        return this.nEntries;
+    public Integer getNEntries() {
+        return nEntries;
     }
 
     /**
      * Check if the object is inside something
      * @return true if it is inside
      */
-    public Boolean isInside() { return this.inside; }
+    @Override
+    public Boolean isInside() {
+        return inside;
+    }
 }

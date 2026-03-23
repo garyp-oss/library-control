@@ -1,8 +1,9 @@
 package pio.daw;
-
+ 
 import java.nio.file.Path;
-
+ 
 public class App {
+ 
     /**
      * Parse the arguments of the program to get the library registry file
      * path. Exits the program if the args are not correct or the file does
@@ -10,21 +11,26 @@ public class App {
      * @param args program args.
      * @return Path to file if exists.
      */
-    public static Path getPathFromArgs(String[] args) throws Exception{
-        if(args.length != 1){
-            throw new Exception("Program args are no just 1: " + String.join(" ", args));
+    public static Path getPathFromArgs(String[] args) throws Exception {
+        boolean argsInvalid = args == null || args.length != 1;
+        if (argsInvalid) {
+            throw new Exception("Se esperaba exactamente 1 argumento, se recibieron: "
+                    + (args == null ? 0 : args.length));
         }
-        Path p = Path.of(args[0]);
-        if(!p.toString().endsWith(".txt")){
-            throw new Exception("The file is not valid: " + p.toString());
+ 
+        Path path = Path.of(args[0]).toAbsolutePath();
+ 
+        boolean isTxtFile = path.getFileName().toString().endsWith(".txt");
+        if (!isTxtFile) {
+            throw new Exception("El archivo no tiene extensión .txt: " + path);
         }
-
-        return p;
+ 
+        return path;
     }
-
-    public static void main(String[] args) throws Exception{
-        Path p = getPathFromArgs(args);
-        Controlable controler = Library.fromFile(p);
-        controler.printResume();
+ 
+    public static void main(String[] args) throws Exception {
+        Path path = getPathFromArgs(args);
+        Controlable controller = Library.fromFile(path);
+        controller.printResume();
     }
 }

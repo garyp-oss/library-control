@@ -1,107 +1,103 @@
 package pio.daw;
-
+ 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
-
+ 
 public class Library implements Controlable {
-    private Map<String,User> users;
-
+ 
+    private final Map<String, User> users;
+ 
     /**
-     * Read the library register file (.txt) and create a library object
+     * Read the library register file (.txt) and create a Library object
      * with the current status of the users.
      * @param path Library registry file path.
      * @return Library object.
      */
-    public static Library fromFile(Path path) throws IOException{
+    public static Library fromFile(Path path) throws IOException {
         Library library = new Library();
-        for( String line : Files.readAllLines(path)){
-            String[] splittedLine = line.split(";");
-            String id = splittedLine[0];
-            EventType e = 
-                switch(splittedLine[1]) {
-                    case "ENTRADA" -> EventType.ENTRY;
-                    case "SALIDA" -> EventType.EXIT;
-                    default -> null;
-                };
-            library.registerChange(id, e);
-        }         
+        Files.lines(path)
+             .map(line -> line.split(";"))
+             .filter(parts -> parts.length == 2)
+             .forEach(parts -> {
+                 String id = parts[0];
+                 EventType event = parseEvent(parts[1]);
+                 if (event != null) {
+                     library.registerChange(id, event);
+                 }
+             });
         return library;
     }
-
-    private Library(){
-        this.users = new HashMap<>();
+ 
+    private static EventType parseEvent(String raw) {
+        return switch (raw.trim().toUpperCase()) {
+            case "ENTRADA" -> EventType.ENTRY;
+            case "SALIDA"  -> EventType.EXIT;
+            default        -> null;
+        };
     }
-
-    public void registerChange(String id, EventType e){
-        User u = this.users.get(id);
-        if(u == null){
-            u = new User(id);
-        }
-        u.registerNewEvent(e);
-        this.users.put(id, u);
-        
+ 
+    private Library() {
+        this.users = new TreeMap<>();
     }
-
-    public List<User> getCurrentInside(){
-         return this.users.values().stream()
-                .filter(u -> u.isInside())
-                .collect(Collectors.toList());
+ 
+    @Override
+    public void registerChange(String id, EventType e) {
+        users.computeIfAbsent(id, User::new)
+             .registerNewEvent(e);
     }
-
-    public  List<User> getMaxEntryUsers(){
-        Integer maxEntries = 0;
-        List<User> maxUsers = new ArrayList<>();
-        for(User u : this.users.values()){
-            if(u.getNEntries() == maxEntries){
-                maxUsers.add(u);
-            }
-            else if(u.getNEntries() > maxEntries){
-                maxEntries = u.getNEntries();
-                maxUsers = new ArrayList<>();
-                maxUsers.add(u);
-            }
-        }
-        return maxUsers;
+ 
+    @Override
+    public List<User> getCurrentInside() {
+        return users.values().stream()
+                    .filter(User::isInside)
+                    .collect(Collectors.toList());
     }
-
-
-    /**
-     * Get the list with all the users that has enter the place ordered by User ID.
-     * @return
-     */
-    public List<User> getUserList(){
-        return this.users.values().stream()
-               .filter(u -> u.getNEntries() > 0)
-               .sorted((u1,u2) -> u1.getId().compareTo(u2.getId()))
-               .collect(Collectors.toList());
+ 
+    @Override
+    public List<User> getMaxEntryUsers() {
+        int maxEntries = users.values().stream()
+                              .mapToInt(User::getNEntries)
+                              .max()
+                              .orElse(0);
+ 
+        return users.values().stream()
+                    .filter(u -> u.getNEntries() == maxEntries)
+                    .collect(Collectors.toList());
     }
-
-    /**
-     * Print a resume of the current status:
-     * 1. Current users
-     * 2. Entries per user
-     * 3. User with more entries
-     */
-    public void printResume(){
-        System.out.println("Usuarios actualmente dentro de la biblioteca:");
-        this.getCurrentInside().stream()
-            .sorted( (u1, u2) -> u1.getId().compareTo(u2.getId()) )
-            .forEach( (u) -> { System.out.println(u.getId()); });
-        System.out.println();
-        System.out.println("Número de entradas por usuario:");
-        this.getUserList().stream()
-            .sorted( (u1, u2) -> u1.getId().compareTo(u2.getId()) )
-            .forEach( (u) -> { System.out.printf("%s -> %d\n", u.getId(), u.getNEntries()); });
-        System.out.println();
-        System.out.println("Usuario(s) con más entradas:");
-        this.getMaxEntryUsers().stream()
-            .sorted( (u1, u2) -> u1.getId().compareTo(u2.getId()) )
-            .forEach( (u) -> { System.out.println(u.getId()); });
+ 
+    @Override
+    public List<User> getUserList() {
+        return users.values().stream()
+                    .filter(u -> u.getNEntries() > 0)
+                    .sorted(Comparator.comparing(User::getId))
+                    .collect(Collectors.toList());
+    }
+ 
+    @Override
+    public void printResume() {
+        System.out.print("Usuarios actualmente dentro de la biblioteca:\n");
+        getCurrentInside().stream()
+                          .sorted(Comparator.comparing(User::getId))
+                          .forEach(u -> System.out.print(u.getId() + "\n"));
+ 
+        System.out.print("\n");
+ 
+        System.out.print("Número de entradas por usuario:\n");
+        getUserList().stream()
+                     .sorted(Comparator.comparing(User::getId))
+                     .forEach(u -> System.out.print(u.getId() + " -> " + u.getNEntries() + "\n"));
+ 
+        System.out.print("\n");
+ 
+        System.out.print("Usuario(s) con más entradas:\n");
+        getMaxEntryUsers().stream()
+                          .sorted(Comparator.comparing(User::getId))
+                          .forEach(u -> System.out.print(u.getId() + "\n"));
     }
 }
